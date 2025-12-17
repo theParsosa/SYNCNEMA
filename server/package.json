@@ -1,0 +1,11 @@
+{
+  "name": "delplayer-party",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy"
+  },
+  "dependencies": {
+    "partykit": "^0.0.103"
+  }
+}

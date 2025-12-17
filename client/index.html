@@ -1,0 +1,475 @@
+<!-- ===== START OF FILE index.html (FREE MODE & LIVE TIME) ===== -->
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>سینمای شخصی ما 🍿</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🍿</text></svg>">
+    
+    <style>
+        body { font-family: 'Vazirmatn', sans-serif; overflow: hidden; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        @keyframes fadeInSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 0.8; transform: translateY(0); } }
+        .toast-msg { animation: fadeInSlide 0.3s ease-out forwards; }
+        emoji-picker { position: absolute; bottom: 70px; left: 10px; z-index: 60; --emoji-font-family: 'Vazirmatn'; height: 300px; width: 100%; }
+        
+        #chat-sidebar { transform: translateX(0); transition: all 0.3s ease; width: 320px; opacity: 1; }
+        .sidebar-closed { transform: translateX(100%) !important; width: 0 !important; min-width: 0 !important; border: none !important; overflow: hidden !important; opacity: 0 !important; padding: 0 !important; pointer-events: none !important; }
+        
+        @media (max-width: 640px) { #chat-sidebar { position: absolute; right: 0; top: 0; height: 100%; width: 100%; z-index: 50; } }
+        :fullscreen #chat-sidebar { position: absolute; right: 0; top: 0; height: 100%; width: 320px; background-color: rgba(31, 41, 55, 0.85); backdrop-filter: blur(5px); z-index: 50; }
+        .fs-btn { text-shadow: 0 0 5px black; }
+        .overflow-x-hidden { overflow-x: hidden; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
+
+    <!-- ===== TOP BAR ===== -->
+    <div id="top-bar" class="bg-gray-800 border-b border-gray-700 p-2 flex items-center justify-between gap-2 shadow-md z-20 relative">
+        <div class="flex items-center gap-2 min-w-fit">
+            <h1 class="text-xl font-bold text-cyan-400 hidden sm:block">🍿 سینما</h1>
+            <div id="status" class="text-xs font-medium px-3 py-1 bg-gray-900 rounded-full text-yellow-500 whitespace-nowrap">منتظر...</div>
+            
+            <!-- دکمه جدید: تغییر حالت سینک -->
+            <button id="sync-toggle-btn" class="bg-gray-700 hover:bg-gray-600 text-green-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 border border-gray-600 transition-colors" title="وضعیت سینک خودکار">
+                <span>🔗</span> <span class="hidden md:inline">سینک روشن</span>
+            </button>
+
+            <button onclick="document.getElementById('input-panel').classList.toggle('hidden')" class="sm:hidden bg-gray-700 p-1 rounded">⚙️</button>
+        </div>
+
+        <div id="input-panel" class="hidden sm:flex flex-1 items-center gap-2 absolute sm:relative top-12 sm:top-0 left-0 right-0 bg-gray-800 p-2 sm:p-0 border-b sm:border-0 border-gray-600 sm:justify-end z-50 shadow-xl sm:shadow-none">
+            <div class="flex items-center gap-1 flex-1 max-w-md">
+                <input type="text" id="video-url-input" placeholder="لینک فیلم/یوتیوب" class="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs w-full focus:border-cyan-500 outline-none">
+                <button id="load-url-btn" class="bg-cyan-700 hover:bg-cyan-600 text-white px-2 py-1 rounded text-xs whitespace-nowrap">پخش</button>
+                <label class="cursor-pointer bg-gray-700 hover:bg-gray-600 p-1 rounded text-xs" title="فایل فیلم">📁<input type="file" id="video-file-input" accept="video/*,.mkv" class="hidden"></label>
+            </div>
+            <div class="flex items-center gap-1 flex-1 max-w-xs">
+                <input type="text" id="sub-url-input" placeholder="لینک زیرنویس" class="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs w-full focus:border-yellow-500 outline-none">
+                <button id="load-sub-url-btn" class="bg-yellow-700 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs whitespace-nowrap">SUB</button>
+                <label class="cursor-pointer bg-gray-700 hover:bg-gray-600 p-1 rounded text-xs" title="فایل زیرنویس">📝<input type="file" id="subtitle-file-input" accept=".vtt,.srt" class="hidden"></label>
+            </div>
+            <div class="flex items-center gap-1 border-r border-gray-600 pr-2">
+                <!-- نمایش زمان دوست -->
+                <span id="partner-time-display" class="text-[10px] text-gray-400 font-mono w-12 text-center hidden" title="زمان فعلی دوست">⏱️ --:--</span>
+                
+                <span id="my-id" class="font-mono text-cyan-400 font-bold text-xs cursor-pointer px-1 bg-gray-900 rounded" title="کپی شناسه">...</span>
+                <input type="text" id="partner-id-input" maxlength="7" placeholder="ID دوست" class="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs w-20 text-center outline-none">
+                <button id="connect-btn" class="bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">وصل</button>
+                <button id="disconnect-btn" class="bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded text-xs hidden">قطع</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="cinema-container" class="flex-1 flex flex-row-reverse overflow-hidden relative w-full bg-black">
+        
+        <!-- Video Area -->
+        <div class="flex-1 relative flex items-center justify-center overflow-hidden w-full group">
+            <video id="my-video" class="w-full h-full max-h-screen object-contain" controls></video>
+            <div id="youtube-player-container" class="w-full h-full" style="display: none;"><div id="youtube-player"></div></div>
+            
+            <div id="length-warning" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-600/90 text-white text-sm px-4 py-2 rounded shadow-lg backdrop-blur hidden z-10">⚠️ زمان ویدیوها یکسان نیست</div>
+            
+            <div id="toast-container" class="absolute bottom-20 left-4 z-20 flex flex-col items-start gap-2 pointer-events-none max-w-[300px]"></div>
+
+            <div class="absolute top-4 right-4 flex flex-col gap-2 z-30">
+                <button id="toggle-chat-btn" class="bg-gray-800/80 hover:bg-cyan-600 text-white p-2 rounded-full shadow-lg backdrop-blur transition-all relative">
+                    💬 <span id="unread-badge" class="absolute -top-1 -right-1 bg-red-500 text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+                </button>
+                <button id="custom-fs-btn" class="bg-gray-800/80 hover:bg-white hover:text-black text-white p-2 rounded-full shadow-lg backdrop-blur transition-all fs-btn" title="تمام صفحه با چت">⛶</button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div id="chat-sidebar" class="bg-gray-800 border-r border-gray-700 flex flex-col relative z-40 sidebar-closed shadow-2xl h-full shrink-0">
+            <div class="p-3 border-b border-gray-700 flex justify-between items-center bg-gray-850/90">
+                <h3 class="font-bold text-gray-300">گفتگو</h3>
+                <button id="close-sidebar-btn" class="text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+            <div id="reply-preview" class="bg-gray-700/90 p-2 text-xs text-gray-300 hidden flex justify-between border-t border-gray-600"></div>
+            <div class="p-3 border-t border-gray-700 bg-gray-850/90 relative">
+                <div class="flex gap-2">
+                    <button id="emoji-btn" class="text-gray-400 hover:text-yellow-400 text-xl">😊</button>
+                    <input id="chat-input" type="text" class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm focus:border-cyan-500 outline-none text-right text-white" placeholder="پیام..." autocomplete="off">
+                    <button id="chat-send" class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 rounded text-sm">Send</button>
+                </div>
+                <emoji-picker class="light" style="display:none;"></emoji-picker>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+
+    <script>
+        // --- YouTube Global ---
+        var ytPlayer;
+        var isYouTubeMode = false;
+        function onYouTubeIframeAPIReady() {}
+
+        window.addEventListener('load', () => {
+            // --- Helper & Elements ---
+            const $ = (id) => document.getElementById(id);
+            const randomId = () => Math.random().toString(36).substring(2, 9);
+            const formatTime = (s) => {
+                if(isNaN(s)) return '--:--';
+                const m = Math.floor(s / 60);
+                const sec = Math.floor(s % 60);
+                return `${m}:${sec.toString().padStart(2, '0')}`;
+            };
+
+            const videoPlayer = $('my-video');
+            const ytContainer = $('youtube-player-container');
+            const statusDiv = $('status');
+            const chatMsgs = $('chat-messages');
+            const chatInput = $('chat-input');
+            const myIdSpan = $('my-id');
+            const partnerInput = $('partner-id-input');
+            const emojiPicker = document.querySelector('emoji-picker');
+            const warningDiv = $('length-warning');
+            const subUrlInput = $('sub-url-input');
+            const sidebar = $('chat-sidebar');
+            const toggleBtn = $('toggle-chat-btn');
+            const closeSidebarBtn = $('close-sidebar-btn');
+            const toastContainer = $('toast-container');
+            const unreadBadge = $('unread-badge');
+            const replyPreview = $('reply-preview');
+            const cinemaContainer = $('cinema-container');
+            const customFsBtn = $('custom-fs-btn');
+            const syncToggleBtn = $('sync-toggle-btn');
+            const partnerTimeDisplay = $('partner-time-display');
+
+            let unreadCount = 0;
+            let isSidebarOpen = false;
+            let isAutoSync = true; // Flag for auto-sync status
+            let lastPartnerState = { playing: false };
+
+            // --- CONFIG ---
+            // 🔴🔴🔴 آدرس پارتی‌کیت خود را اینجا بگذارید 🔴🔴🔴
+            const PARTYKIT_HOST = 'YOUR_PARTYKIT_URL_HERE'; 
+            const WS_URL = `wss://${PARTYKIT_HOST}/party/main`;
+
+            let ws, myId = randomId(), partnerId = '', isSyncing = false;
+            let partnerDuration = null, hbInterval = null, lastPong = 0;
+            let audioCtx, reconnectAttempts = 0, replyingTo = null;
+
+            myIdSpan.textContent = myId;
+
+            // --- UI Functions ---
+            function toggleSidebar(open) {
+                isSidebarOpen = open;
+                if (open) {
+                    sidebar.classList.remove('sidebar-closed');
+                    unreadCount = 0; unreadBadge.classList.add('hidden');
+                    setTimeout(() => chatMsgs.scrollTop = chatMsgs.scrollHeight, 300);
+                } else sidebar.classList.add('sidebar-closed');
+            }
+            toggleBtn.onclick = () => toggleSidebar(!isSidebarOpen);
+            closeSidebarBtn.onclick = () => toggleSidebar(false);
+
+            // Toggle Auto-Sync Logic
+            syncToggleBtn.onclick = () => {
+                isAutoSync = !isAutoSync;
+                if (isAutoSync) {
+                    syncToggleBtn.innerHTML = `<span>🔗</span> <span class="hidden md:inline">سینک روشن</span>`;
+                    syncToggleBtn.classList.replace('text-gray-400', 'text-green-400');
+                    showToast('همگام‌سازی خودکار فعال شد', false);
+                    sendSync(); // Force update immediately
+                } else {
+                    syncToggleBtn.innerHTML = `<span>🔓</span> <span class="hidden md:inline">سینک آزاد</span>`;
+                    syncToggleBtn.classList.replace('text-green-400', 'text-gray-400');
+                    showToast('حالت آزاد: کنترل ویدیو در دست شماست', false);
+                }
+            };
+
+            // --- FULLSCREEN LOGIC ---
+            customFsBtn.onclick = () => {
+                if (!document.fullscreenElement) {
+                    cinemaContainer.requestFullscreen().catch(err => alert(err.message));
+                } else document.exitFullscreen();
+            };
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement) {
+                    customFsBtn.innerHTML = '⤓'; customFsBtn.title = 'خروج از تمام صفحه';
+                } else {
+                    customFsBtn.innerHTML = '⛶'; customFsBtn.title = 'تمام صفحه با چت';
+                }
+            });
+
+            function showToast(text, isMe) {
+                if (isMe) return;
+                const toast = document.createElement('div');
+                toast.className = 'toast-msg bg-black/60 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-sm max-w-[250px] break-words border-r-4 border-cyan-500 shadow-lg pointer-events-auto';
+                toast.innerHTML = text; 
+                toastContainer.appendChild(toast);
+                toast.onclick = () => toggleSidebar(true);
+                setTimeout(() => { toast.style.opacity='0'; toast.style.transition='opacity 0.5s'; setTimeout(()=>toast.remove(),500); }, 5000);
+            }
+
+            $('emoji-btn').onclick = () => emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+            emojiPicker.addEventListener('emoji-click', e => chatInput.value += e.detail.unicode);
+            document.onclick = (e) => { 
+                if (!emojiPicker.contains(e.target) && e.target !== $('emoji-btn') && !sidebar.contains(e.target) && e.target !== toggleBtn) emojiPicker.style.display = 'none';
+                if (window.innerWidth < 640 && isSidebarOpen && !sidebar.contains(e.target) && e.target !== toggleBtn && !customFsBtn.contains(e.target)) toggleSidebar(false);
+            };
+
+            myIdSpan.onclick = () => {
+                navigator.clipboard.writeText(myId);
+                const original = myIdSpan.textContent;
+                myIdSpan.textContent = "کپی شد!";
+                setTimeout(() => myIdSpan.textContent = original, 1500);
+            };
+
+            function setStatus(msg, type) {
+                statusDiv.textContent = msg;
+                statusDiv.className = `text-xs font-medium px-3 py-1 bg-gray-900 rounded-full whitespace-nowrap transition-colors ${
+                    type === 'ok' ? 'text-green-500' : type === 'con' ? 'text-cyan-400' : type === 'err' ? 'text-red-500' : 'text-yellow-500'}`;
+            }
+
+            // --- Player ---
+            function switchPlayer(youtube) {
+                isYouTubeMode = youtube;
+                videoPlayer.style.display = youtube ? 'none' : 'block';
+                ytContainer.style.display = youtube ? 'block' : 'none';
+                if(youtube) videoPlayer.pause();
+                else if(ytPlayer?.pauseVideo) ytPlayer.pauseVideo();
+            }
+
+            function initYT(id) {
+                if(ytPlayer?.destroy) ytPlayer.destroy();
+                ytPlayer = new YT.Player('youtube-player', {
+                    height: '100%', width: '100%', videoId: id,
+                    playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0, 'modestbranding': 1 },
+                    events: {
+                        'onReady': () => { setStatus('یوتیوب آماده', 'ok'); sendSync(); },
+                        'onStateChange': () => !isSyncing && sendSync(),
+                        'onPlaybackRateChange': () => !isSyncing && sendSync()
+                    }
+                });
+            }
+
+            // --- Connection & Logic ---
+            function connect() {
+                ws = new WebSocket(WS_URL);
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({ type: 'register', id: myId }));
+                    reconnectAttempts = 0;
+                    if(partnerId) { setStatus('اتصال مجدد...', 'yellow'); send(partnerId, { type: 'reconnect_req' }); }
+                    else setStatus('آماده', 'ok');
+                };
+                ws.onmessage = (e) => {
+                    try { const msg = JSON.parse(e.data); if(msg.type === 'signal' && msg.from) handleData(msg.data, msg.from); } catch(err) {}
+                };
+                ws.onclose = () => {
+                    const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts++));
+                    setStatus(`قطع شد`, 'err');
+                    if(!partnerId) resetState();
+                    setTimeout(connect, delay);
+                };
+            }
+
+            function send(to, data) { if(ws?.readyState === 1 && to) ws.send(JSON.stringify({ type: 'signal', to, data })); }
+            function broadcast(data) { send(partnerId, data); }
+
+            function handleData(data, from) {
+                const handshakeTypes = ['conn_req', 'conn_ack', 'reconnect_req', 'reconnect_ack'];
+                if(from !== partnerId && !handshakeTypes.includes(data.type)) return;
+
+                switch(data.type) {
+                    case 'conn_req': partnerId = from; partnerInput.value = from; setConnected(); send(from, { type: 'conn_ack' }); break;
+                    case 'conn_ack': partnerId = from; setConnected(); broadcast({ type: 'req_src' }); break;
+                    case 'reconnect_req': partnerId = from; send(from, { type: 'reconnect_ack' }); setConnected(); break;
+                    case 'reconnect_ack': partnerId = from; setConnected(); break;
+                    case 'ping': send(from, { type: 'pong' }); break;
+                    case 'pong': lastPong = Date.now(); break;
+                    case 'disconnect': resetState(); break;
+                    case 'req_src':
+                        if(isYouTubeMode && ytPlayer) broadcast({ type: 'load_yt', id: ytPlayer.getVideoData().video_id });
+                        else if(videoPlayer.src && !videoPlayer.src.startsWith('blob:')) broadcast({ type: 'load_url', url: videoPlayer.src });
+                        break;
+                    case 'load_url': switchPlayer(false); if(videoPlayer.src !== data.url) { videoPlayer.src = data.url; setStatus('ویدیو سینک', 'ok'); } break;
+                    case 'load_yt': switchPlayer(true); initYT(data.id); setStatus('یوتیوب سینک', 'ok'); break;
+                    case 'load_sub': subUrlInput.value = data.url; processSubtitleUrl(data.url, false); break;
+                    case 'chat':
+                        addMsg(data.data, false); notify();
+                        if (!isSidebarOpen) { showToast(data.data.text, false); unreadCount++; unreadBadge.textContent = unreadCount; unreadBadge.classList.remove('hidden'); }
+                        break;
+                    case 'sync': 
+                        // Update Partner Live Time (Always)
+                        partnerTimeDisplay.textContent = `⏱️ ${formatTime(data.time)}`;
+                        
+                        // Sync Logic
+                        if (isAutoSync) {
+                            syncPlayer(data);
+                        } else {
+                            // Free Mode: Just notify on state change
+                            if (data.play !== lastPartnerState.playing) {
+                                showToast(data.play ? '▶️ دوست پخش کرد' : '⏸️ دوست متوقف کرد', false);
+                            }
+                        }
+                        lastPartnerState.playing = data.play;
+                        break;
+                }
+            }
+
+            function syncPlayer(data) {
+                isSyncing = true;
+                if(data.mode === 'html5' && !isYouTubeMode) {
+                    partnerDuration = data.dur;
+                    if(Math.abs(videoPlayer.currentTime - data.time) > 1.5) videoPlayer.currentTime = data.time;
+                    if(videoPlayer.playbackRate !== data.rate) videoPlayer.playbackRate = data.rate;
+                    if(data.play && videoPlayer.paused) videoPlayer.play().catch(()=>{});
+                    else if(!data.play && !videoPlayer.paused) videoPlayer.pause();
+                } 
+                else if(data.mode === 'yt' && isYouTubeMode && ytPlayer?.seekTo) {
+                    if(Math.abs(ytPlayer.getCurrentTime() - data.time) > 2) ytPlayer.seekTo(data.time, true);
+                    if(ytPlayer.getPlaybackRate() !== data.rate) ytPlayer.setPlaybackRate(data.rate);
+                    const st = ytPlayer.getPlayerState();
+                    if(data.play && st !== 1) ytPlayer.playVideo();
+                    else if(!data.play && st === 1) ytPlayer.pauseVideo();
+                }
+                setTimeout(() => isSyncing = false, 800);
+            }
+
+            function sendSync() {
+                if(isSyncing || !partnerId) return;
+                // Even in Free Mode, we send our status so partner can see our time
+                if(isYouTubeMode && ytPlayer?.getPlayerState) {
+                    broadcast({ type: 'sync', mode: 'yt', play: ytPlayer.getPlayerState() === 1, time: ytPlayer.getCurrentTime(), rate: ytPlayer.getPlaybackRate() });
+                } else if(!isYouTubeMode) {
+                    broadcast({ type: 'sync', mode: 'html5', play: !videoPlayer.paused, time: videoPlayer.currentTime, dur: videoPlayer.duration, rate: videoPlayer.playbackRate });
+                }
+            }
+
+            function setConnected() {
+                setStatus('متصل', 'con');
+                $('connect-btn').classList.add('hidden');
+                $('disconnect-btn').classList.remove('hidden');
+                partnerTimeDisplay.classList.remove('hidden'); // Show time display
+                startHb();
+            }
+
+            function resetState() {
+                partnerId = ''; partnerInput.value = '';
+                setStatus('قطع شد', 'err');
+                $('connect-btn').classList.remove('hidden');
+                $('disconnect-btn').classList.add('hidden');
+                partnerTimeDisplay.classList.add('hidden');
+                if(hbInterval) clearInterval(hbInterval);
+                ws.send(JSON.stringify({ type: 'unregister', id: myId }));
+                myId = randomId(); myIdSpan.textContent = myId;
+                ws.send(JSON.stringify({ type: 'register', id: myId }));
+            }
+
+            function startHb() {
+                if(hbInterval) clearInterval(hbInterval);
+                lastPong = Date.now();
+                hbInterval = setInterval(() => { if(Date.now() - lastPong > 10000) setStatus('ضعیف', 'yellow'); send(partnerId, { type: 'ping' }); }, 5000);
+            }
+
+            // --- Chat ---
+            function addMsg(data, isMe) {
+                const div = document.createElement('div');
+                div.className = `p-2 rounded-lg text-sm break-words relative group mb-2 ${isMe ? 'bg-cyan-900 ml-4 rounded-br-none' : 'bg-gray-700 mr-4 rounded-bl-none'}`;
+                if(data.reply) {
+                    const r = document.createElement('div');
+                    r.className = 'bg-black/20 p-1 mb-1 text-xs border-r-2 border-cyan-500 truncate cursor-pointer opacity-75';
+                    r.textContent = data.reply.txt;
+                    r.onclick = () => document.getElementById(data.reply.id)?.scrollIntoView({behavior:'smooth'});
+                    div.appendChild(r);
+                }
+                div.appendChild(document.createTextNode(data.text));
+                div.id = data.id;
+                const repBtn = document.createElement('button');
+                repBtn.innerHTML = '↩️';
+                repBtn.className = `absolute -top-2 ${isMe?'left-0':'right-0'} opacity-0 group-hover:opacity-100 text-xs transition-opacity bg-gray-800 rounded-full p-0.5`;
+                repBtn.onclick = () => {
+                    replyingTo = { id: data.id, txt: data.text };
+                    replyPreview.innerHTML = `<span>پاسخ: ${data.text.substr(0,15)}...</span><span id="cancel-reply-btn" class="cursor-pointer text-red-400 font-bold px-2">×</span>`;
+                    replyPreview.classList.remove('hidden');
+                    $('cancel-reply-btn').onclick = () => { replyingTo = null; replyPreview.classList.add('hidden'); };
+                    chatInput.focus();
+                };
+                div.appendChild(repBtn);
+                chatMsgs.appendChild(div);
+                chatMsgs.scrollTop = chatMsgs.scrollHeight;
+            }
+
+            $('chat-send').onclick = () => {
+                const txt = chatInput.value.trim();
+                if(!txt) return;
+                const msg = { text: txt, id: 'm'+Date.now(), reply: replyingTo };
+                addMsg(msg, true);
+                broadcast({ type: 'chat', data: msg });
+                chatInput.value = ''; replyingTo = null; replyPreview.classList.add('hidden'); chatInput.focus();
+            };
+
+            function notify() {
+                if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination);
+                o.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                o.start(); o.stop(audioCtx.currentTime + 0.1);
+            }
+
+            // --- Subtitle ---
+            function addSubTrack(blobUrl, label) {
+                const old = videoPlayer.querySelectorAll('track');
+                old.forEach(t => t.remove());
+                const track = document.createElement('track');
+                track.kind = 'subtitles'; track.label = label; track.src = blobUrl; track.default = true;
+                videoPlayer.appendChild(track);
+                if(videoPlayer.textTracks[0]) videoPlayer.textTracks[0].mode = 'showing';
+            }
+
+            async function processSubtitleUrl(url, shouldBroadcast = true) {
+                try {
+                    setStatus('DL Sub...', 'yellow');
+                    let response;
+                    try { response = await fetch(url); } catch(e) {}
+                    if (!response || !response.ok) response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+                    if (!response.ok) throw new Error('Fail');
+                    let text = await response.text();
+                    if (!text.trim().startsWith('WEBVTT')) text = 'WEBVTT\n\n' + text.replace(/\r/g, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2').replace(/^\d+\s*$/gm, '');
+                    const blobUrl = URL.createObjectURL(new Blob([text], { type: 'text/vtt' }));
+                    addSubTrack(blobUrl, 'Link Sub');
+                    setStatus('Sub OK', 'ok');
+                    if (shouldBroadcast) broadcast({ type: 'load_sub', url });
+                } catch (err) { setStatus('Sub Err', 'err'); alert('خطا در زیرنویس'); }
+            }
+
+            $('load-sub-url-btn').onclick = () => { const url = subUrlInput.value.trim(); if(!url) return; processSubtitleUrl(url, true); };
+            $('video-file-input').onchange = (e) => { const f = e.target.files[0]; if(f) { switchPlayer(false); videoPlayer.src = URL.createObjectURL(f); setStatus('File OK', 'ok'); } };
+            $('subtitle-file-input').onchange = (e) => {
+                const f = e.target.files[0]; if(f) { const reader = new FileReader(); reader.onload = (ev) => { const txt = f.name.endsWith('.srt') ? 'WEBVTT\n\n' + ev.target.result.replace(/\r/g,'').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2') : ev.target.result; addSubTrack(URL.createObjectURL(new Blob([txt], {type:'text/vtt'})), 'Local Sub'); }; reader.readAsText(f); }
+            };
+            $('load-url-btn').onclick = () => {
+                const val = $('video-url-input').value.trim(); if(!val) return;
+                const ytMatch = val.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+                if(ytMatch) { switchPlayer(true); initYT(ytMatch[1]); broadcast({ type: 'load_yt', id: ytMatch[1] }); } else { switchPlayer(false); videoPlayer.src = val; broadcast({ type: 'load_url', url: val }); }
+            };
+            $('connect-btn').onclick = () => { const id = partnerInput.value.trim(); if(id && id !== myId) { partnerId = id; setStatus('Connecting...', 'yellow'); send(id, { type: 'conn_req' }); } };
+            $('disconnect-btn').onclick = () => { send(partnerId, {type:'disconnect'}); resetState(); };
+            chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chat-send').click(); } });
+            setInterval(() => { if(!isYouTubeMode && partnerDuration && Math.abs(videoPlayer.duration - partnerDuration) > 5) warningDiv.classList.remove('hidden'); else warningDiv.classList.add('hidden'); }, 3000);
+
+            // Re-attach
+            ['play','pause','seeked','ratechange'].forEach(evt => videoPlayer.addEventListener(evt, sendSync));
+
+            toggleSidebar(false); 
+            connect();
+        });
+    </script>
+</body>
+</html>
