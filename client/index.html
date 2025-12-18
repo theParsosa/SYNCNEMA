@@ -1,10 +1,10 @@
-<!-- ===== START OF FILE index.html (STABLE CONNECTION & LIVE SYNC) ===== -->
+<!-- ===== START OF FILE index.html (RENAMED TO SYNCNEMA) ===== -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>سینمای شخصی ما 🍿</title>
+    <title>Syncnema 🍿</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -41,7 +41,7 @@
     <!-- ===== TOP BAR ===== -->
     <div id="top-bar" class="bg-gray-800 border-b border-gray-700 p-2 flex items-center justify-between gap-2 shadow-md z-20 relative">
         <div class="flex items-center gap-2 min-w-fit">
-            <h1 class="text-xl font-bold text-cyan-400 hidden sm:block">🍿 سینما</h1>
+            <h1 class="text-xl font-bold text-cyan-400 hidden sm:block">🍿 Syncnema</h1>
             <div id="status" class="text-xs font-medium px-3 py-1 bg-gray-900 rounded-full text-yellow-500 whitespace-nowrap">منتظر...</div>
             
             <button id="sync-toggle-btn" class="bg-gray-700 hover:bg-gray-600 text-green-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 border border-gray-600 transition-colors" title="تغییر وضعیت برای هر دو نفر">
@@ -63,9 +63,12 @@
                 <label class="cursor-pointer bg-gray-700 hover:bg-gray-600 p-1 rounded text-xs" title="فایل زیرنویس">📝<input type="file" id="subtitle-file-input" accept=".vtt,.srt" class="hidden"></label>
             </div>
             <div class="flex items-center gap-1 border-r border-gray-600 pr-2">
-                <span id="partner-time-display" class="text-[10px] text-gray-400 font-mono w-12 text-center hidden" title="زمان فعلی دوست">⏱️ --:--</span>
-                <span id="my-id" class="font-mono text-cyan-400 font-bold text-xs cursor-pointer px-1 bg-gray-900 rounded" title="کپی شناسه">...</span>
-                <input type="text" id="partner-id-input" maxlength="7" placeholder="ID دوست" class="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs w-20 text-center outline-none">
+                <span id="partner-time-display" class="text-[10px] text-gray-400 font-mono w-12 text-center hidden" title="زمان فعلی دوستت">⏱️ --:--</span>
+                <div class="flex items-center bg-gray-900 rounded border border-gray-600 px-2 py-1">
+                    <span id="my-id" class="font-mono text-cyan-400 font-bold text-xs cursor-pointer" title="کپی شناسه">...</span>
+                    <button id="edit-id-btn" class="text-gray-500 hover:text-white text-[10px] mr-1" title="تغییر شناسه ثابت">✏️</button>
+                </div>
+                <input type="text" id="partner-id-input" placeholder="ID دوستت" class="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs w-20 text-center outline-none">
                 <button id="connect-btn" class="bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">وصل</button>
                 <button id="disconnect-btn" class="bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded text-xs hidden">قطع</button>
             </div>
@@ -129,6 +132,7 @@
             const chatMsgs = $('chat-messages');
             const chatInput = $('chat-input');
             const myIdSpan = $('my-id');
+            const editIdBtn = $('edit-id-btn');
             const partnerInput = $('partner-id-input');
             const emojiPicker = document.querySelector('emoji-picker');
             const warningDiv = $('length-warning');
@@ -149,17 +153,37 @@
             let isAutoSync = true;
             let lastPartnerState = { playing: false };
 
-            // 🔴🔴🔴 آدرس پارتی‌کیت خود را اینجا بگذارید 🔴🔴🔴
+            // 🔴🔴🔴 آدرس سرور 🔴🔴🔴
+            // این آدرس باید با نام جدید پروژه شما در پارتی‌کیت همخوانی داشته باشد
             const PARTYKIT_HOST = 'YOUR_PARTYKIT_URL_HERE'; 
             const WS_URL = `wss://${PARTYKIT_HOST}/party/main`;
 
-            // *** FIX 1: Remove Persistent ID for Stability ***
-            // هر بار شناسه جدید تولید می‌شود تا از تداخل سرور جلوگیری شود
-            let ws, myId = randomId(), partnerId = '', isSyncing = false;
+            const urlParams = new URLSearchParams(window.location.search);
+            const joinId = urlParams.get('join');
+            if (joinId) {
+                partnerInput.value = joinId;
+                window.history.replaceState({}, document.title, "/");
+            }
+
+            let storedId = localStorage.getItem('syncnema_fixed_id');
+            if (!storedId) {
+                storedId = randomId();
+                localStorage.setItem('syncnema_fixed_id', storedId);
+            }
+            
+            let ws, myId = storedId, partnerId = '', isSyncing = false;
             let partnerDuration = null, hbInterval = null, lastPong = 0;
             let audioCtx, reconnectAttempts = 0, replyingTo = null;
 
             myIdSpan.textContent = myId;
+
+            editIdBtn.onclick = () => {
+                const newId = prompt('شناسه یکتای خود را وارد کنید:', myId);
+                if (newId && newId.trim() !== "" && newId !== myId) {
+                    localStorage.setItem('syncnema_fixed_id', newId.trim());
+                    window.location.reload();
+                }
+            };
 
             window.addEventListener('beforeunload', (e) => {
                 if (partnerId) { e.preventDefault(); e.returnValue = 'خروج؟ اتصال قطع می‌شود.'; }
@@ -266,19 +290,14 @@
                 ws.onopen = () => {
                     ws.send(JSON.stringify({ type: 'register', id: myId }));
                     reconnectAttempts = 0;
-                    
-                    // سعی کن به آخرین دوست وصل بشی (ولی با شناسه جدید خودم)
-                    const savedPartner = localStorage.getItem('delplayer_partner');
+                    const savedPartner = localStorage.getItem('syncnema_partner');
                     if (partnerId) {
                         setStatus('اتصال مجدد...', 'yellow');
                         send(partnerId, { type: 'reconnect_req' });
                     } else if (savedPartner) {
-                        // فقط شناسه دوست را پر کن، خودکار درخواست نده تا مطمئن شویم کاربر آماده است
                         partnerInput.value = savedPartner;
                         setStatus('آماده', 'ok');
-                    } else {
-                        setStatus('آماده', 'ok');
-                    }
+                    } else setStatus('آماده', 'ok');
                 };
                 ws.onmessage = (e) => {
                     try { const msg = JSON.parse(e.data); if(msg.type === 'signal' && msg.from) handleData(msg.data, msg.from); } catch(err) {}
@@ -313,18 +332,25 @@
                     case 'load_url': switchPlayer(false); if(videoPlayer.src !== data.url) { videoPlayer.src = data.url; setStatus('ویدیو سینک', 'ok'); } break;
                     case 'load_yt': switchPlayer(true); initYT(data.id); setStatus('یوتیوب سینک', 'ok'); break;
                     case 'load_sub': subUrlInput.value = data.url; processSubtitleUrl(data.url, false); break;
+                    case 'sync_sub_file':
+                        const blob = new Blob([data.content], { type: 'text/vtt' });
+                        const blobUrl = URL.createObjectURL(blob);
+                        addSubTrack(blobUrl, 'Synced Sub');
+                        setStatus('زیرنویس همگام شد', 'ok');
+                        showToast(`📝 زیرنویس "${data.name}" دریافت شد`, false);
+                        break;
                     case 'chat':
                         addMsg(data.data, false); notify();
                         if (!isSidebarOpen) { showToast(data.data.text, false); unreadCount++; unreadBadge.textContent = unreadCount; unreadBadge.classList.remove('hidden'); }
                         break;
                     case 'toggle_sync_mode':
                         updateSyncUI(data.auto);
-                        showToast(data.auto ? 'دوست: سینک روشن' : 'دوست: سینک آزاد', false);
+                        showToast(data.auto ? 'دوستت: سینک روشن' : 'دوستت: سینک آزاد', false);
                         break;
                     case 'sync': 
                         partnerTimeDisplay.textContent = `⏱️ ${formatTime(data.time)}`;
                         if (isAutoSync) syncPlayer(data);
-                        else if (data.play !== lastPartnerState.playing) showToast(data.play ? '▶️ دوست پخش کرد' : '⏸️ دوست متوقف کرد', false);
+                        else if (data.play !== lastPartnerState.playing) showToast(data.play ? '▶️ دوستت پخش کرد' : '⏸️ دوستت متوقف کرد', false);
                         lastPartnerState.playing = data.play;
                         break;
                 }
@@ -363,7 +389,7 @@
                 $('connect-btn').classList.add('hidden');
                 $('disconnect-btn').classList.remove('hidden');
                 partnerTimeDisplay.classList.remove('hidden');
-                localStorage.setItem('delplayer_partner', partnerId);
+                localStorage.setItem('syncnema_partner', partnerId);
                 startHb();
             }
 
@@ -374,9 +400,8 @@
                 $('disconnect-btn').classList.add('hidden');
                 partnerTimeDisplay.classList.add('hidden');
                 if(hbInterval) clearInterval(hbInterval);
-                if (clearStorage) localStorage.removeItem('delplayer_partner');
+                if (clearStorage) localStorage.removeItem('syncnema_partner');
                 ws.send(JSON.stringify({ type: 'unregister', id: myId }));
-                // شناسه را عوض نمی‌کنیم تا اگر اتصال قطع و وصل شد کاربر گیج نشود
                 ws.send(JSON.stringify({ type: 'register', id: myId }));
             }
 
@@ -461,8 +486,27 @@
             $('load-sub-url-btn').onclick = () => { const url = subUrlInput.value.trim(); if(!url) return; processSubtitleUrl(url, true); };
             $('video-file-input').onchange = (e) => { const f = e.target.files[0]; if(f) { switchPlayer(false); videoPlayer.src = URL.createObjectURL(f); setStatus('File OK', 'ok'); } };
             $('subtitle-file-input').onchange = (e) => {
-                const f = e.target.files[0]; if(f) { const reader = new FileReader(); reader.onload = (ev) => { const txt = f.name.endsWith('.srt') ? 'WEBVTT\n\n' + ev.target.result.replace(/\r/g,'').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2') : ev.target.result; addSubTrack(URL.createObjectURL(new Blob([txt], {type:'text/vtt'})), 'Local Sub'); }; reader.readAsText(f); }
+                const f = e.target.files[0];
+                if(f) {
+                    if (f.size > 1024 * 1024) { alert('فایل زیرنویس نباید بیشتر از ۱ مگابایت باشد.'); return; }
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        let content = ev.target.result;
+                        if (f.name.endsWith('.srt') || !content.trim().startsWith('WEBVTT')) {
+                            content = 'WEBVTT\n\n' + content.replace(/\r/g, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2').replace(/^\d+\s*$/gm, '');
+                        }
+                        const blobUrl = URL.createObjectURL(new Blob([content], {type:'text/vtt'}));
+                        addSubTrack(blobUrl, 'Local Sub');
+                        setStatus('زیرنویس لود شد', 'ok');
+                        if (partnerId) {
+                            broadcast({ type: 'sync_sub_file', content: content, name: f.name });
+                            showToast('زیرنویس برای دوستت ارسال شد', false);
+                        }
+                    };
+                    reader.readAsText(f);
+                }
             };
+
             $('load-url-btn').onclick = () => {
                 const val = $('video-url-input').value.trim(); if(!val) return;
                 const ytMatch = val.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
@@ -473,13 +517,8 @@
             
             chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chat-send').click(); } });
             
-            // *** FIX 2: Live Sync Loop ***
-            // هر 1 ثانیه وضعیت را ارسال کن، حتی اگر ویدیو در حال پخش است
             setInterval(() => { 
-                // نمایش هشدار طول ویدیو
                 if(!isYouTubeMode && partnerDuration && Math.abs(videoPlayer.duration - partnerDuration) > 5) warningDiv.classList.remove('hidden'); else warningDiv.classList.add('hidden'); 
-                
-                // ارسال وضعیت زنده برای تایمر
                 if(partnerId) {
                     if((!isYouTubeMode && !videoPlayer.paused) || (isYouTubeMode && ytPlayer?.getPlayerState && ytPlayer.getPlayerState() === 1)) {
                         sendSync();
