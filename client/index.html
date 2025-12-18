@@ -1,4 +1,4 @@
-<!-- ===== START OF FILE index.html (FREE MODE & LIVE TIME) ===== -->
+<!-- ===== START OF FILE index.html (STABLE CONNECTION & LIVE SYNC) ===== -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -26,6 +26,14 @@
         :fullscreen #chat-sidebar { position: absolute; right: 0; top: 0; height: 100%; width: 320px; background-color: rgba(31, 41, 55, 0.85); backdrop-filter: blur(5px); z-index: 50; }
         .fs-btn { text-shadow: 0 0 5px black; }
         .overflow-x-hidden { overflow-x: hidden; }
+
+        video::cue {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            font-size: 1.1em;
+            text-shadow: 1px 1px 2px black;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
@@ -36,8 +44,7 @@
             <h1 class="text-xl font-bold text-cyan-400 hidden sm:block">🍿 سینما</h1>
             <div id="status" class="text-xs font-medium px-3 py-1 bg-gray-900 rounded-full text-yellow-500 whitespace-nowrap">منتظر...</div>
             
-            <!-- دکمه جدید: تغییر حالت سینک -->
-            <button id="sync-toggle-btn" class="bg-gray-700 hover:bg-gray-600 text-green-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 border border-gray-600 transition-colors" title="وضعیت سینک خودکار">
+            <button id="sync-toggle-btn" class="bg-gray-700 hover:bg-gray-600 text-green-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 border border-gray-600 transition-colors" title="تغییر وضعیت برای هر دو نفر">
                 <span>🔗</span> <span class="hidden md:inline">سینک روشن</span>
             </button>
 
@@ -56,9 +63,7 @@
                 <label class="cursor-pointer bg-gray-700 hover:bg-gray-600 p-1 rounded text-xs" title="فایل زیرنویس">📝<input type="file" id="subtitle-file-input" accept=".vtt,.srt" class="hidden"></label>
             </div>
             <div class="flex items-center gap-1 border-r border-gray-600 pr-2">
-                <!-- نمایش زمان دوست -->
                 <span id="partner-time-display" class="text-[10px] text-gray-400 font-mono w-12 text-center hidden" title="زمان فعلی دوست">⏱️ --:--</span>
-                
                 <span id="my-id" class="font-mono text-cyan-400 font-bold text-xs cursor-pointer px-1 bg-gray-900 rounded" title="کپی شناسه">...</span>
                 <input type="text" id="partner-id-input" maxlength="7" placeholder="ID دوست" class="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs w-20 text-center outline-none">
                 <button id="connect-btn" class="bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">وصل</button>
@@ -69,16 +74,11 @@
 
     <!-- ===== MAIN CONTENT ===== -->
     <div id="cinema-container" class="flex-1 flex flex-row-reverse overflow-hidden relative w-full bg-black">
-        
-        <!-- Video Area -->
         <div class="flex-1 relative flex items-center justify-center overflow-hidden w-full group">
             <video id="my-video" class="w-full h-full max-h-screen object-contain" controls></video>
             <div id="youtube-player-container" class="w-full h-full" style="display: none;"><div id="youtube-player"></div></div>
-            
             <div id="length-warning" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-600/90 text-white text-sm px-4 py-2 rounded shadow-lg backdrop-blur hidden z-10">⚠️ زمان ویدیوها یکسان نیست</div>
-            
             <div id="toast-container" class="absolute bottom-20 left-4 z-20 flex flex-col items-start gap-2 pointer-events-none max-w-[300px]"></div>
-
             <div class="absolute top-4 right-4 flex flex-col gap-2 z-30">
                 <button id="toggle-chat-btn" class="bg-gray-800/80 hover:bg-cyan-600 text-white p-2 rounded-full shadow-lg backdrop-blur transition-all relative">
                     💬 <span id="unread-badge" class="absolute -top-1 -right-1 bg-red-500 text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
@@ -87,7 +87,6 @@
             </div>
         </div>
 
-        <!-- Sidebar -->
         <div id="chat-sidebar" class="bg-gray-800 border-r border-gray-700 flex flex-col relative z-40 sidebar-closed shadow-2xl h-full shrink-0">
             <div class="p-3 border-b border-gray-700 flex justify-between items-center bg-gray-850/90">
                 <h3 class="font-bold text-gray-300">گفتگو</h3>
@@ -110,13 +109,11 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
 
     <script>
-        // --- YouTube Global ---
         var ytPlayer;
         var isYouTubeMode = false;
         function onYouTubeIframeAPIReady() {}
 
         window.addEventListener('load', () => {
-            // --- Helper & Elements ---
             const $ = (id) => document.getElementById(id);
             const randomId = () => Math.random().toString(36).substring(2, 9);
             const formatTime = (s) => {
@@ -149,21 +146,25 @@
 
             let unreadCount = 0;
             let isSidebarOpen = false;
-            let isAutoSync = true; // Flag for auto-sync status
+            let isAutoSync = true;
             let lastPartnerState = { playing: false };
 
-            // --- CONFIG ---
             // 🔴🔴🔴 آدرس پارتی‌کیت خود را اینجا بگذارید 🔴🔴🔴
             const PARTYKIT_HOST = 'YOUR_PARTYKIT_URL_HERE'; 
             const WS_URL = `wss://${PARTYKIT_HOST}/party/main`;
 
+            // *** FIX 1: Remove Persistent ID for Stability ***
+            // هر بار شناسه جدید تولید می‌شود تا از تداخل سرور جلوگیری شود
             let ws, myId = randomId(), partnerId = '', isSyncing = false;
             let partnerDuration = null, hbInterval = null, lastPong = 0;
             let audioCtx, reconnectAttempts = 0, replyingTo = null;
 
             myIdSpan.textContent = myId;
 
-            // --- UI Functions ---
+            window.addEventListener('beforeunload', (e) => {
+                if (partnerId) { e.preventDefault(); e.returnValue = 'خروج؟ اتصال قطع می‌شود.'; }
+            });
+
             function toggleSidebar(open) {
                 isSidebarOpen = open;
                 if (open) {
@@ -175,22 +176,27 @@
             toggleBtn.onclick = () => toggleSidebar(!isSidebarOpen);
             closeSidebarBtn.onclick = () => toggleSidebar(false);
 
-            // Toggle Auto-Sync Logic
-            syncToggleBtn.onclick = () => {
-                isAutoSync = !isAutoSync;
+            function updateSyncUI(auto) {
+                isAutoSync = auto;
                 if (isAutoSync) {
                     syncToggleBtn.innerHTML = `<span>🔗</span> <span class="hidden md:inline">سینک روشن</span>`;
                     syncToggleBtn.classList.replace('text-gray-400', 'text-green-400');
-                    showToast('همگام‌سازی خودکار فعال شد', false);
-                    sendSync(); // Force update immediately
                 } else {
                     syncToggleBtn.innerHTML = `<span>🔓</span> <span class="hidden md:inline">سینک آزاد</span>`;
                     syncToggleBtn.classList.replace('text-green-400', 'text-gray-400');
-                    showToast('حالت آزاد: کنترل ویدیو در دست شماست', false);
+                }
+            }
+
+            syncToggleBtn.onclick = () => {
+                const newState = !isAutoSync;
+                updateSyncUI(newState);
+                showToast(newState ? 'همگام‌سازی خودکار فعال شد' : 'حالت آزاد فعال شد', false);
+                if(partnerId) {
+                    sendSync();
+                    broadcast({ type: 'toggle_sync_mode', auto: newState });
                 }
             };
 
-            // --- FULLSCREEN LOGIC ---
             customFsBtn.onclick = () => {
                 if (!document.fullscreenElement) {
                     cinemaContainer.requestFullscreen().catch(err => alert(err.message));
@@ -234,7 +240,6 @@
                     type === 'ok' ? 'text-green-500' : type === 'con' ? 'text-cyan-400' : type === 'err' ? 'text-red-500' : 'text-yellow-500'}`;
             }
 
-            // --- Player ---
             function switchPlayer(youtube) {
                 isYouTubeMode = youtube;
                 videoPlayer.style.display = youtube ? 'none' : 'block';
@@ -256,14 +261,24 @@
                 });
             }
 
-            // --- Connection & Logic ---
             function connect() {
                 ws = new WebSocket(WS_URL);
                 ws.onopen = () => {
                     ws.send(JSON.stringify({ type: 'register', id: myId }));
                     reconnectAttempts = 0;
-                    if(partnerId) { setStatus('اتصال مجدد...', 'yellow'); send(partnerId, { type: 'reconnect_req' }); }
-                    else setStatus('آماده', 'ok');
+                    
+                    // سعی کن به آخرین دوست وصل بشی (ولی با شناسه جدید خودم)
+                    const savedPartner = localStorage.getItem('delplayer_partner');
+                    if (partnerId) {
+                        setStatus('اتصال مجدد...', 'yellow');
+                        send(partnerId, { type: 'reconnect_req' });
+                    } else if (savedPartner) {
+                        // فقط شناسه دوست را پر کن، خودکار درخواست نده تا مطمئن شویم کاربر آماده است
+                        partnerInput.value = savedPartner;
+                        setStatus('آماده', 'ok');
+                    } else {
+                        setStatus('آماده', 'ok');
+                    }
                 };
                 ws.onmessage = (e) => {
                     try { const msg = JSON.parse(e.data); if(msg.type === 'signal' && msg.from) handleData(msg.data, msg.from); } catch(err) {}
@@ -271,7 +286,7 @@
                 ws.onclose = () => {
                     const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts++));
                     setStatus(`قطع شد`, 'err');
-                    if(!partnerId) resetState();
+                    if(!partnerId) resetState(false);
                     setTimeout(connect, delay);
                 };
             }
@@ -290,7 +305,7 @@
                     case 'reconnect_ack': partnerId = from; setConnected(); break;
                     case 'ping': send(from, { type: 'pong' }); break;
                     case 'pong': lastPong = Date.now(); break;
-                    case 'disconnect': resetState(); break;
+                    case 'disconnect': resetState(true); break;
                     case 'req_src':
                         if(isYouTubeMode && ytPlayer) broadcast({ type: 'load_yt', id: ytPlayer.getVideoData().video_id });
                         else if(videoPlayer.src && !videoPlayer.src.startsWith('blob:')) broadcast({ type: 'load_url', url: videoPlayer.src });
@@ -302,19 +317,14 @@
                         addMsg(data.data, false); notify();
                         if (!isSidebarOpen) { showToast(data.data.text, false); unreadCount++; unreadBadge.textContent = unreadCount; unreadBadge.classList.remove('hidden'); }
                         break;
+                    case 'toggle_sync_mode':
+                        updateSyncUI(data.auto);
+                        showToast(data.auto ? 'دوست: سینک روشن' : 'دوست: سینک آزاد', false);
+                        break;
                     case 'sync': 
-                        // Update Partner Live Time (Always)
                         partnerTimeDisplay.textContent = `⏱️ ${formatTime(data.time)}`;
-                        
-                        // Sync Logic
-                        if (isAutoSync) {
-                            syncPlayer(data);
-                        } else {
-                            // Free Mode: Just notify on state change
-                            if (data.play !== lastPartnerState.playing) {
-                                showToast(data.play ? '▶️ دوست پخش کرد' : '⏸️ دوست متوقف کرد', false);
-                            }
-                        }
+                        if (isAutoSync) syncPlayer(data);
+                        else if (data.play !== lastPartnerState.playing) showToast(data.play ? '▶️ دوست پخش کرد' : '⏸️ دوست متوقف کرد', false);
                         lastPartnerState.playing = data.play;
                         break;
                 }
@@ -341,7 +351,6 @@
 
             function sendSync() {
                 if(isSyncing || !partnerId) return;
-                // Even in Free Mode, we send our status so partner can see our time
                 if(isYouTubeMode && ytPlayer?.getPlayerState) {
                     broadcast({ type: 'sync', mode: 'yt', play: ytPlayer.getPlayerState() === 1, time: ytPlayer.getCurrentTime(), rate: ytPlayer.getPlaybackRate() });
                 } else if(!isYouTubeMode) {
@@ -353,19 +362,21 @@
                 setStatus('متصل', 'con');
                 $('connect-btn').classList.add('hidden');
                 $('disconnect-btn').classList.remove('hidden');
-                partnerTimeDisplay.classList.remove('hidden'); // Show time display
+                partnerTimeDisplay.classList.remove('hidden');
+                localStorage.setItem('delplayer_partner', partnerId);
                 startHb();
             }
 
-            function resetState() {
+            function resetState(clearStorage = true) {
                 partnerId = ''; partnerInput.value = '';
                 setStatus('قطع شد', 'err');
                 $('connect-btn').classList.remove('hidden');
                 $('disconnect-btn').classList.add('hidden');
                 partnerTimeDisplay.classList.add('hidden');
                 if(hbInterval) clearInterval(hbInterval);
+                if (clearStorage) localStorage.removeItem('delplayer_partner');
                 ws.send(JSON.stringify({ type: 'unregister', id: myId }));
-                myId = randomId(); myIdSpan.textContent = myId;
+                // شناسه را عوض نمی‌کنیم تا اگر اتصال قطع و وصل شد کاربر گیج نشود
                 ws.send(JSON.stringify({ type: 'register', id: myId }));
             }
 
@@ -375,7 +386,6 @@
                 hbInterval = setInterval(() => { if(Date.now() - lastPong > 10000) setStatus('ضعیف', 'yellow'); send(partnerId, { type: 'ping' }); }, 5000);
             }
 
-            // --- Chat ---
             function addMsg(data, isMe) {
                 const div = document.createElement('div');
                 div.className = `p-2 rounded-lg text-sm break-words relative group mb-2 ${isMe ? 'bg-cyan-900 ml-4 rounded-br-none' : 'bg-gray-700 mr-4 rounded-bl-none'}`;
@@ -423,7 +433,6 @@
                 o.start(); o.stop(audioCtx.currentTime + 0.1);
             }
 
-            // --- Subtitle ---
             function addSubTrack(blobUrl, label) {
                 const old = videoPlayer.querySelectorAll('track');
                 old.forEach(t => t.remove());
@@ -461,8 +470,22 @@
             };
             $('connect-btn').onclick = () => { const id = partnerInput.value.trim(); if(id && id !== myId) { partnerId = id; setStatus('Connecting...', 'yellow'); send(id, { type: 'conn_req' }); } };
             $('disconnect-btn').onclick = () => { send(partnerId, {type:'disconnect'}); resetState(); };
+            
             chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chat-send').click(); } });
-            setInterval(() => { if(!isYouTubeMode && partnerDuration && Math.abs(videoPlayer.duration - partnerDuration) > 5) warningDiv.classList.remove('hidden'); else warningDiv.classList.add('hidden'); }, 3000);
+            
+            // *** FIX 2: Live Sync Loop ***
+            // هر 1 ثانیه وضعیت را ارسال کن، حتی اگر ویدیو در حال پخش است
+            setInterval(() => { 
+                // نمایش هشدار طول ویدیو
+                if(!isYouTubeMode && partnerDuration && Math.abs(videoPlayer.duration - partnerDuration) > 5) warningDiv.classList.remove('hidden'); else warningDiv.classList.add('hidden'); 
+                
+                // ارسال وضعیت زنده برای تایمر
+                if(partnerId) {
+                    if((!isYouTubeMode && !videoPlayer.paused) || (isYouTubeMode && ytPlayer?.getPlayerState && ytPlayer.getPlayerState() === 1)) {
+                        sendSync();
+                    }
+                }
+            }, 1000);
 
             // Re-attach
             ['play','pause','seeked','ratechange'].forEach(evt => videoPlayer.addEventListener(evt, sendSync));
